@@ -617,7 +617,7 @@ def main():
     threading.Thread(target=polling_loop).start()
     print('Starting server...')
     print("APP_LOCATION: " + os.environ.get('APP_LOCATION')
-          "PORT: " + os.environ.get('PORT'))
+          + "PORT: " + os.environ.get('PORT'))
     if os.environ.get('APP_LOCATION') == 'heroku':
         run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     else:
