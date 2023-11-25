@@ -2,5 +2,9 @@
     "SPOTIFY_CLIENT_ID": "",
     "SPOTIFY_CLIENT_SECRET": "",
     "SPOTIFY_USER_ID": "",
-    "SPOTIPY_REDIRECT_URI": "http://localhost:8080"
+    "SPOTIPY_REDIRECT_URI": "http://localhost:8080",
+    "POSTGRES_PORT": 5432,
+    "POSTGRES_HOST": "localhost",
+    "POSTGRES_PASSWORD": "",
+    "POSTGRES_USER": "postgres"
 }

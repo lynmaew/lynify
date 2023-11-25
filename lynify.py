@@ -7,11 +7,12 @@ import sqlite3
 import threading
 import time
 import json
+import psycopg2
 
 SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
 SPOTIFY_CURRENTLY_PLAYING = 'https://api.spotify.com/v1/me/player/currently-playing'
 SPOTIFY_API_URL = 'https://api.spotify.com/v1/'
-DATABASE_NAME = 'lynify.db'
+DATABASE_NAME = 'lynify'
 
 # config from json file
 with open('config.json') as f:
@@ -20,72 +21,160 @@ SPOTIFY_CLIENT_ID = config['SPOTIFY_CLIENT_ID']
 SPOTIFY_CLIENT_SECRET = config['SPOTIFY_CLIENT_SECRET']
 SPOTIFY_USER_ID = config['SPOTIFY_USER_ID']
 SPOTIPY_REDIRECT_URI = config['SPOTIPY_REDIRECT_URI']
+POSTGRES_USER = config['POSTGRES_USER']
+POSTGRES_PASSWORD = config['POSTGRES_PASSWORD']
+POSTGRES_HOST = config['POSTGRES_HOST']
+POSTGRES_PORT = config['POSTGRES_PORT']
 
+def singleton(cls, *args, **kw):
+    instances = {}
+    def _singleton(*args, **kw):
+        if cls not in instances:
+                instances[cls] = cls(*args, **kw)
+        return instances[cls]
+    return _singleton
 
+@singleton
+class Database:
+    """
+    A class used to interface to a postgres database"""
+
+    def __init__(self) -> None:
+        self.database_name = DATABASE_NAME
+        conn = psycopg2.connect(database="postgres", user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
+        conn.autocommit = True
+        # check if the database exists
+        c = conn.cursor()
+        c.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = '" + self.database_name + "'")
+        if c.fetchone() is None:
+            c.execute("CREATE DATABASE " + self.database_name)
+        conn.close()
+
+    def connect(self):
+        return psycopg2.connect(database=self.database_name, user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
+    
+    def table_exists(self, table_name: str):
+        conn = self.connect()
+        c = conn.cursor()
+        c.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '" + table_name + "')")
+        if c.fetchone()[0] == 1:
+            conn.close()
+            return True
+        else:
+            conn.close()
+            return False
+        
+    def drop_table(self, table_name: str):
+        conn = self.connect()
+        c = conn.cursor()
+        c.execute("DROP TABLE IF EXISTS " + table_name)
+        conn.commit()
+        conn.close()
+
+    def create_table(self, table_name: str, columns: list):
+        conn = self.connect()
+        c = conn.cursor()
+        c.execute("CREATE TABLE IF NOT EXISTS " + table_name + " (" + ", ".join(columns) + ")")
+        conn.commit()
+        conn.close()
+
+    def add_entry(self, table_name: str, columns: dict, values: list):
+        column_names = [col.split()[0] for col in columns]
+        sql = "INSERT INTO " + table_name + " (" + ", ".join(column_names) + ") VALUES (" + ", ".join(["%s" for _ in column_names]) + ")"
+        conn = self.connect()
+        c = conn.cursor()
+        c.execute(sql, values)
+        conn.commit()
+        conn.close()
+
+    def get_entry(self, table_name: str, columns: list, values: list):
+        column_names = [col.split()[0] for col in columns]
+        conn = self.connect()
+        c = conn.cursor()
+        sql = "SELECT * FROM " + table_name + " WHERE " + " AND ".join([col + " = " + "%s" for col in column_names])
+        c.execute(sql, values)
+        result = c.fetchall()
+        conn.close()
+        return result
+    
+    def get_all(self, table_name: str):
+        conn = self.connect()
+        c = conn.cursor()
+        c.execute("SELECT * FROM " + table_name)
+        result = c.fetchall()
+        conn.close()
+        return result
+    
+    def get_all_limit(self, table_name: str, limit: int):
+        conn = self.connect()
+        c = conn.cursor()
+        c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit))
+        result = c.fetchall()
+        conn.close()
+        return result
+    
+    def get_all_limit_offset(self, table_name: str, limit: int, offset: int):
+        conn = self.connect()
+        c = conn.cursor()
+        c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit) + " OFFSET " + str(offset))
+        result = c.fetchall()
+        conn.close()
+        return result
+    
+    def get_most_recent(self, table_name: str):
+        conn = self.connect()
+        c = conn.cursor()
+        c.execute("SELECT * FROM " + table_name + " ORDER BY timestamp DESC LIMIT 1")
+        result = c.fetchall()
+        conn.close()
+        return result
+
+@singleton
 class ArtistTable:
     """
     A class used to interface to a sql table of artists"""
     def __init__(self) -> None:
         token_success, token_result = check_for_token()
         self.access_token = token_result
-        if not self.table_exists():
-            self.create_table()
+        self.database = Database()
+        self.table_name = 'artists'
+        self.columns = ['artist_id text', 'artist_name text', 'artist_genres text', 'artist_popularity integer', 'artist_followers integer']
+        if not self.database.table_exists(self.table_name):
+            self.database.create_table(self.table_name, self.columns)
     
     def table_exists(self):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='artists'")
-        if c.fetchone()[0] == 1:
-            conn.close()
-            return True
-        else:
-            conn.close()
-            return False
+        return self.database.table_exists(self.table_name)
 
     def create_table(self):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS artists
-                     (artist_id text, artist_name text, artist_genres text, artist_popularity integer, artist_followers integer)''')
-        conn.commit()
-        conn.close()
+        self.database.create_table(self.table_name, self.columns)
 
     def has_artist(self, artist_id):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT count(*) FROM artists WHERE artist_id = '" + artist_id + "'")
-        if c.fetchone()[0] == 1:
-            conn.close()
-            return True
-        else:
-            conn.close()
-            return False
+        result = self.database.get_entry(self.table_name, ['artist_id'], [artist_id])
+        return len(result) > 0
 
     def add_artist(self, artist):
         if self.has_artist(artist.artist_id):
             return
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("INSERT INTO artists VALUES (?, ?, ?, ?, ?)", (artist.artist_id, artist.artist_name, str(artist.artist_genres), artist.artist_popularity, artist.artist_followers))
-        conn.commit()
-        conn.close()
+        values = [artist.artist_id, artist.artist_name, str(artist.artist_genres), artist.artist_popularity, artist.artist_followers]
+        self.database.add_entry(self.table_name, self.columns, values)
 
     def get_artist(self, artist_id):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT * FROM artists WHERE artist_id = '" + artist_id + "'")
-        result = c.fetchall()
+        result = self.database.get_entry(self.table_name, ['artist_id'], [artist_id])
         # get the artist from the Spotify API if it doesn't exist in the table
         if len(result) == 0:
             token_success, token_result = check_for_token()
+            if not token_success:
+                print("Failed to get token")
+                return None
             self.access_token = token_result
             artist = Artist.from_id(artist_id, access_token=self.access_token)
+            if artist is None:
+                return None
             self.add_artist(artist)
-            c.execute("SELECT * FROM artists WHERE artist_id = '" + artist_id + "'")
-            result = c.fetchall()
-        conn.close()
+            result = self.database.get_entry(self.table_name, ['artist_id'], [artist_id])
+            if len(result) == 0:
+                return None
         return result
-
 
 class Artist:
     """
@@ -151,44 +240,24 @@ class TrackTable:
     """
     A class used to interface to a sql table of tracks"""
     def __init__(self) -> None:
-        if not self.table_exists():
-            self.create_table()
+        self.columns = ['track_id text', 'track_name text', 'track_artist text', 'track_album text', 'track_duration integer', 'track_popularity integer', 'track_release_date text', 'track_explicit boolean', 'artist_genres text', 'artist_ids text']
+        self.database = Database()
+        self.table_name = 'tracks'
+        if not self.database.table_exists(self.table_name):
+            self.database.create_table(self.table_name, self.columns)
 
     def table_exists(self):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='tracks'")
-        if c.fetchone()[0] == 1:
-            conn.close()
-            return True
-        else:
-            conn.close()
-            return False
+        return self.database.table_exists(self.table_name)
 
     def create_table(self):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS tracks
-                     (track_id text, track_name text, track_artist text, track_album text, track_duration integer, track_popularity integer, track_release_date text, track_explicit integer, artist_genres text, artist_ids text)''')
-        conn.commit()
-        conn.close()
+        self.database.create_table(self.table_name, self.columns)
     
     def has_track(self, track_id):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT count(*) FROM tracks WHERE track_id = '" + track_id + "'")
-        if c.fetchone()[0] == 1:
-            conn.close()
-            return True
-        else:
-            conn.close()
-            return False
+        result = self.database.get_entry(self.table_name, ['track_id'], [track_id])
+        return len(result) > 0
         
     def get_track(self, track_id):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT * FROM tracks WHERE track_id = '" + track_id + "'")
-        result = c.fetchall()
+        result = self.database.get_entry(self.table_name, ['track_id'], [track_id])
         # try to get the track from the Spotify API if it doesn't exist in the table
         if len(result) == 0:
             token_success, token = check_for_token()
@@ -196,12 +265,12 @@ class TrackTable:
                 print("Failed to get token")
                 return None
             track = TrackEntry.from_id(track_id, access_token=token)
+            if track is None:
+                return None
             self.add_track(track)
-            c.execute("SELECT * FROM tracks WHERE track_id = '" + track_id + "'")
-            result = c.fetchall()
-        conn.close()
-        if len(result) == 0:
-            return None
+            result = self.database.get_entry(self.table_name, ['track_id'], [track_id])
+            if len(result) == 0:
+                return None
         return TrackEntry.from_sql_result(result[0])
 
     def add_track(self, response: dict):
@@ -217,11 +286,8 @@ class TrackTable:
         artist_table = ArtistTable()
         for artist in track.track_artists:
             artist_table.add_artist(artist)
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("INSERT INTO tracks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (track.track_id, track.track_name, track.track_artist, track.track_album, track.track_duration, track.track_popularity, track.track_release_date, track.track_explicit, str(track.artist_genres), str(track.artist_ids)))
-        conn.commit()
-        conn.close()
+        values = [track.track_id, track.track_name, track.track_artist, track.track_album, track.track_duration, track.track_popularity, track.track_release_date, track.track_explicit, str(track.artist_genres), str(track.artist_ids)]
+        self.database.add_entry(self.table_name, self.columns, values)
 
 class TrackEntry:
     """
@@ -309,38 +375,25 @@ class HistoryTable:
     A class used to interface to a sql table of playing history"""
 
     def __init__(self) -> None:
-        if not self.table_exists():
-            self.create_table()
+        self.columns = ['timestamp text', 'track_id text', 'date text']
+        self.database = Database()
+        self.table_name = 'playing_history'
+        if not self.database.table_exists(self.table_name):
+            self.database.create_table(self.table_name, self.columns)
         self.track_table = TrackTable()
 
     def table_exists(self):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='playing_history'")
-        if c.fetchone()[0] == 1:
-            conn.close()
-            return True
-        else:
-            conn.close()
-            return False
+        return self.database.table_exists(self.table_name)
         
     def create_table(self):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS playing_history
-                     (timestamp text, track_id text, date text)''')
-        conn.commit()
-        conn.close()
+        self.database.create_table(self.table_name, self.columns)
 
     def add_entry(self, response: dict):
         entry = PlayingHistoryEntry.from_response(response)
         if self.has_entry(entry):
             return
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("INSERT INTO playing_history VALUES (?, ?, ?)", (entry.timestamp, entry.track_id, entry.date))
-        conn.commit()
-        conn.close()
+        values = [entry.timestamp, entry.track_id, entry.date]
+        self.database.add_entry(self.table_name, self.columns, values)
 
     def has_entry(self, entry: 'PlayingHistoryEntry'):
         recent_entry = self.get_most_recent()
@@ -349,20 +402,10 @@ class HistoryTable:
         return (len(recent_entry) > 0 and PlayingHistoryEntry.from_sql_result(recent_entry[0]) == entry)
 
     def get_most_recent(self):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT * FROM playing_history ORDER BY timestamp DESC LIMIT 1")
-        result = c.fetchall()
-        conn.close()
-        return result
+        return self.database.get_most_recent(self.table_name)
     
     def get_history(self, limit=100, offset=0):
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT * FROM playing_history ORDER BY timestamp DESC LIMIT " + str(limit) + " OFFSET " + str(offset))
-        result = c.fetchall()
-        conn.close()
-        return result
+        return self.database.get_all_limit_offset(self.table_name, limit, offset)
     
 class PlayingHistoryEntry:
     """
@@ -417,17 +460,6 @@ class PlayingHistoryEntry:
         if track is None:
             return False
         return self.track_id == other.track_id and abs(int(self.timestamp) - int(other.timestamp)) < int(track.track_duration)
-
-def table_exists(table_name):
-    conn = sqlite3.connect(DATABASE_NAME)
-    c = conn.cursor()
-    c.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='" + table_name + "'")
-    if c.fetchone()[0] == 1:
-        conn.close()
-        return True
-    else:
-        conn.close()
-        return False
 
 def request_access_token(client_id, client_secret):
     payload = {'grant_type': 'client_credentials'}
@@ -527,5 +559,12 @@ def history():
 
     return get_playing_history_html()
 
-threading.Thread(target=polling_loop).start()
-run(host='localhost', port=8080)
+def main():
+    Database().drop_table('artists')
+    Database().drop_table('tracks')
+    Database().drop_table('playing_history')
+    threading.Thread(target=polling_loop).start()
+    run(host='localhost', port=8080)
+
+if __name__ == '__main__':
+    main()
