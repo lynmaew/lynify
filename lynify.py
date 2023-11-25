@@ -109,7 +109,7 @@ class Database:
     def get_all_limit(self, table_name: str, limit: int):
         conn = self.connect()
         c = conn.cursor()
-        c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit) + "ORDER BY timestamp DESC")
+        c.execute("SELECT * FROM " + table_name + " ORDER BY timestamp DESC LIMIT " + str(limit))
         result = c.fetchall()
         conn.close()
         return result
@@ -117,7 +117,7 @@ class Database:
     def get_all_limit_offset(self, table_name: str, limit: int, offset: int):
         conn = self.connect()
         c = conn.cursor()
-        c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit) + " OFFSET " + str(offset) + " ORDER BY timestamp DESC")
+        c.execute("SELECT * FROM " + table_name + " ORDER BY timestamp DESC LIMIT " + str(limit) + " OFFSET " + str(offset))
         result = c.fetchall()
         conn.close()
         return result
