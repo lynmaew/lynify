@@ -7,23 +7,23 @@ import threading
 import time
 import json
 import psycopg2
+import os
 
 SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
 SPOTIFY_CURRENTLY_PLAYING = 'https://api.spotify.com/v1/me/player/currently-playing'
 SPOTIFY_API_URL = 'https://api.spotify.com/v1/'
 DATABASE_NAME = 'lynify'
 
-# config from json file
-with open('config.json') as f:
-    config = json.load(f)
-SPOTIFY_CLIENT_ID = config['SPOTIFY_CLIENT_ID']
-SPOTIFY_CLIENT_SECRET = config['SPOTIFY_CLIENT_SECRET']
-SPOTIFY_USER_ID = config['SPOTIFY_USER_ID']
-SPOTIPY_REDIRECT_URI = config['SPOTIPY_REDIRECT_URI']
-POSTGRES_USER = config['POSTGRES_USER']
-POSTGRES_PASSWORD = config['POSTGRES_PASSWORD']
-POSTGRES_HOST = config['POSTGRES_HOST']
-POSTGRES_PORT = config['POSTGRES_PORT']
+DATABASE_URL = os.environ.get('DATABASE_URL')
+SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
+SPOTIFY_USER_ID = os.environ.get('SPOTIFY_USER_ID')
+SPOTIPY_REDIRECT_URI = os.environ.get('SPOTIPY_REDIRECT_URI')
+# POSTGRES_USER = os.environ.get('POSTGRES_USER')
+# POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
+# POSTGRES_HOST = os.environ.get('POSTGRES_HOST')
+# POSTGRES_PORT = os.environ.get('POSTGRES_PORT')
+
 
 def singleton(cls, *args, **kw):
     instances = {}
@@ -40,7 +40,8 @@ class Database:
 
     def __init__(self) -> None:
         self.database_name = DATABASE_NAME
-        conn = psycopg2.connect(database="postgres", user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        #conn = psycopg2.connect(database="postgres", user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
         conn.autocommit = True
         # check if the database exists
         c = conn.cursor()
@@ -50,7 +51,8 @@ class Database:
         conn.close()
 
     def connect(self):
-        return psycopg2.connect(database=self.database_name, user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
+        #return psycopg2.connect(database=self.database_name, user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
+        return psycopg2.connect(DATABASE_URL, sslmode='require')
     
     def table_exists(self, table_name: str):
         conn = self.connect()
