@@ -175,6 +175,15 @@ class ArtistTable:
             if len(result) == 0:
                 return None
         return result
+    
+    def get_all(self):  
+        return self.database.get_all(self.table_name)
+    
+    def get_all_limit(self, limit: int):
+        return self.database.get_all_limit(self.table_name, limit)
+    
+    def get_all_limit_offset(self, limit: int, offset: int):
+        return self.database.get_all_limit_offset(self.table_name, limit, offset)
 
 class Artist:
     """
@@ -543,26 +552,67 @@ def polling_loop():
             print(e)
         time.sleep(60)
 
+def nav_bar():
+    html = '<div class="w3-bar w3-black">'
+    html += '<a href="/" class="w3-bar-item w3-button">Currently Playing</a>'
+    html += '<a href="/history" class="w3-bar-item w3-button">History</a>'
+    html += '<a href="/artists" class="w3-bar-item w3-button">Artists</a>'
+    html += '</div>'
+    return html
+
+def header():
+    html = '<head><link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"></head>'
+    html += '<style>table, th, td {border: 1px solid black;}</style>'
+    html += '<style>table {border-collapse: collapse;}</style>'
+    html += '<style>th, td {padding: 5px;}</style>'
+    html += '<style>th {text-align: left;}</style>'
+    html += '<style>tr:nth-child(even) {background-color: #f2f2f2;}</style>'
+    html += nav_bar()
+    return html
+
 @route('/')
 def index():
+    html = header()
     token_success, token_result = check_for_token()
     if not token_success:
-        return token_result
+        return html + token_result
 
-    return display_currently_playing(token_result)
+    return html + display_currently_playing(token_result)
 
 @route('/history')
 def history():
+    html = header()
     token_success, token_result = check_for_token()
     if not token_success:
-        return token_result
+        return html + token_result
 
-    return get_playing_history_html()
+    return html + get_playing_history_html()
+
+@route('/artists')
+def artists():
+    html = header()
+    token_success, token_result = check_for_token()
+    if not token_success:
+        return html + token_result
+
+    artist_table = ArtistTable()
+    result = artist_table.get_all()
+    html += '<table>'
+    html += '<tr><th>Artist</th><th>Genres</th><th>Popularity</th><th>Followers</th></tr>'
+    for row in result:
+        artist = Artist.from_sql(row[0])
+        html += '<tr>'
+        cols = [artist.artist_name, str(artist.artist_genres), str(artist.artist_popularity), str(artist.artist_followers)]
+        for col in cols:
+            html += '<td>' + col + '</td>'
+        html += '</tr>'
+    html += '</table>'
+    return html
 
 def main():
-    Database().drop_table('artists')
-    Database().drop_table('tracks')
-    Database().drop_table('playing_history')
+    # Database().drop_table('artists')
+    # Database().drop_table('tracks')
+    # Database().drop_table('playing_history')
     threading.Thread(target=polling_loop).start()
     run(host='localhost', port=8080)
 
