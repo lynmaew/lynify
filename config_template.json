@@ -1,0 +1,6 @@
+{
+    "SPOTIFY_CLIENT_ID": "",
+    "SPOTIFY_CLIENT_SECRET": "",
+    "SPOTIFY_USER_ID": "",
+    "SPOTIPY_REDIRECT_URI": "http://localhost:8080"
+}
