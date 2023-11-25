@@ -615,9 +615,13 @@ def main():
     # Database().drop_table('tracks')
     # Database().drop_table('playing_history')
     threading.Thread(target=polling_loop).start()
+    print('Starting server...')
+    print("APP_LOCATION: " + os.environ.get('APP_LOCATION')
+          "PORT: " + os.environ.get('PORT'))
     if os.environ.get('APP_LOCATION') == 'heroku':
         run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     else:
         run(host='localhost', port=8080, debug=True)
+
 if __name__ == '__main__':
     main()
