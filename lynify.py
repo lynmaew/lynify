@@ -101,7 +101,7 @@ class Database:
     def get_all(self, table_name: str):
         conn = self.connect()
         c = conn.cursor()
-        c.execute("SELECT * FROM " + table_name)
+        c.execute("SELECT * FROM " + table_name + " ORDER BY timestamp DESC")
         result = c.fetchall()
         conn.close()
         return result
@@ -109,7 +109,7 @@ class Database:
     def get_all_limit(self, table_name: str, limit: int):
         conn = self.connect()
         c = conn.cursor()
-        c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit))
+        c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit) + "ORDER BY timestamp DESC")
         result = c.fetchall()
         conn.close()
         return result
@@ -117,7 +117,7 @@ class Database:
     def get_all_limit_offset(self, table_name: str, limit: int, offset: int):
         conn = self.connect()
         c = conn.cursor()
-        c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit) + " OFFSET " + str(offset))
+        c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit) + " OFFSET " + str(offset) + " ORDER BY timestamp DESC")
         result = c.fetchall()
         conn.close()
         return result
@@ -558,6 +558,7 @@ def nav_bar():
     html += '<a href="/" class="w3-bar-item w3-button">Currently Playing</a>'
     html += '<a href="/history" class="w3-bar-item w3-button">History</a>'
     html += '<a href="/artists" class="w3-bar-item w3-button">Artists</a>'
+    html += '<a href="/tracks" class="w3-bar-item w3-button">Tracks</a>'
     html += '</div>'
     return html
 
@@ -603,10 +604,73 @@ def artists():
     for row in result:
         artist = Artist.from_sql(row[0])
         html += '<tr>'
-        cols = [artist.artist_name, str(artist.artist_genres), str(artist.artist_popularity), str(artist.artist_followers)]
+        artist_link = '<a href="/artists/' + artist.artist_id + '">' + artist.artist_name + '</a>'
+        cols = [artist_link, str(artist.artist_genres), str(artist.artist_popularity), str(artist.artist_followers)]
         for col in cols:
             html += '<td>' + col + '</td>'
         html += '</tr>'
+    html += '</table>'
+    return html
+
+@route('/artists/<artist_id>')
+def artist(artist_id):
+    html = header()
+    token_success, token_result = check_for_token()
+    if not token_success:
+        return html + token_result
+
+    artist = Artist.from_sql(artist_id)
+    html += '<table>'
+    html += '<tr><th>Artist</th><th>Genres</th><th>Popularity</th><th>Followers</th></tr>'
+    html += '<tr>'
+    artist_link = '<a href="/artists/' + artist.artist_id + '">' + artist.artist_name + '</a>'
+    cols = [artist_link, str(artist.artist_genres), str(artist.artist_popularity), str(artist.artist_followers)]
+    for col in cols:
+        html += '<td>' + col + '</td>'
+    html += '</tr>'
+    html += '</table>'
+    return html
+
+@route('/tracks')
+def tracks():
+    html = header()
+    token_success, token_result = check_for_token()
+    if not token_success:
+        return html + token_result
+
+    track_table = TrackTable()
+    result = track_table.get_all()
+    html += '<table>'
+    html += '<tr><th>Track</th><th>Artist</th><th>Album</th><th>Duration</th><th>Popularity</th><th>Release Date</th><th>Explicit</th><th>Genres</th><th>Artist IDs</th></tr>'
+    for row in result:
+        track = TrackEntry.from_sql_result(row)
+        html += '<tr>'
+        track_link = '<a href="/tracks/' + track.track_id + '">' + track.track_name + '</a>'
+        artist_link = '<a href="/artists/' + track.artist_ids[0] + '">' + track.track_artist + '</a>'
+        cols = [track_link, artist_link, track.track_album, str(track.track_duration), str(track.track_popularity), track.track_release_date, str(track.track_explicit), str(track.artist_genres), str(track.artist_ids)]
+        for col in cols:
+            html += '<td>' + col + '</td>'
+        html += '</tr>'
+    html += '</table>'
+    return html
+
+@route('/tracks/<track_id>')
+def track(track_id):
+    html = header()
+    token_success, token_result = check_for_token()
+    if not token_success:
+        return html + token_result
+
+    track = TrackEntry.from_sql(track_id)
+    html += '<table>'
+    html += '<tr><th>Track</th><th>Artist</th><th>Album</th><th>Duration</th><th>Popularity</th><th>Release Date</th><th>Explicit</th><th>Genres</th><th>Artist IDs</th></tr>'
+    html += '<tr>'
+    track_link = '<a href="/tracks/' + track.track_id + '">' + track.track_name + '</a>'
+    artist_link = '<a href="/artists/' + track.artist_ids[0] + '">' + track.track_artist + '</a>'
+    cols = [track_link, artist_link, track.track_album, str(track.track_duration), str(track.track_popularity), track.track_release_date, str(track.track_explicit), str(track.artist_genres), str(track.artist_ids)]
+    for col in cols:
+        html += '<td>' + col + '</td>'
+    html += '</tr>'
     html += '</table>'
     return html
 
@@ -615,9 +679,9 @@ def main():
     # Database().drop_table('tracks')
     # Database().drop_table('playing_history')
     threading.Thread(target=polling_loop).start()
-    print('Starting server...')
+    print('Starting server...\n')
     print("APP_LOCATION: " + os.environ.get('APP_LOCATION')
-          + "PORT: " + os.environ.get('PORT'))
+          + "\nPORT: " + os.environ.get('PORT'))
     if os.environ.get('APP_LOCATION') == 'heroku':
         run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     else:
