@@ -3,7 +3,6 @@ from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 from bottle import route, run, request
 from datetime import datetime
-import sqlite3
 import threading
 import time
 import json
