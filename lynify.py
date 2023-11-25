@@ -40,15 +40,15 @@ class Database:
 
     def __init__(self) -> None:
         self.database_name = DATABASE_NAME
-        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-        #conn = psycopg2.connect(database="postgres", user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
-        conn.autocommit = True
+        # conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        # conn = psycopg2.connect(database="postgres", user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
+        # conn.autocommit = True
         # check if the database exists
-        c = conn.cursor()
-        c.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = '" + self.database_name + "'")
-        if c.fetchone() is None:
-            c.execute("CREATE DATABASE " + self.database_name)
-        conn.close()
+        # c = conn.cursor()
+        # c.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = '" + self.database_name + "'")
+        # if c.fetchone() is None:
+        #     c.execute("CREATE DATABASE " + self.database_name)
+        # conn.close()
 
     def connect(self):
         #return psycopg2.connect(database=self.database_name, user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
