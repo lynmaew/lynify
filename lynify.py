@@ -404,6 +404,7 @@ class TrackEntry:
     def __eq__(self, other):
         return self.track_id == other.track_id
 
+@singleton
 class HistoryTable:
     """
     A class used to interface to a sql table of playing history"""
@@ -438,8 +439,14 @@ class HistoryTable:
     def get_most_recent(self):
         return self.database.get_most_recent(self.table_name)
     
-    def get_history(self, limit=100, offset=0):
-        return self.database.get_all_limit_offset(self.table_name, limit, offset, order_by='timestamp')
+    def get_all(self):
+        return self.database.get_all(self.table_name, 'timestamp')
+    
+    def get_all_limit(self, limit: int):
+        return self.database.get_all_limit(self.table_name, limit, 'timestamp')
+    
+    def get_all_limit_offset(self, limit: int, offset: int):
+        return self.database.get_all_limit_offset(self.table_name, limit, offset, 'timestamp')
     
 class PlayingHistoryEntry:
     """
@@ -551,27 +558,6 @@ def poll_for_playing_history():
         HistoryTable().add_entry(currently_playing)
     return True
 
-def get_playing_history_html():
-    result = HistoryTable().get_history()
-    html = '<table>'
-    html += '<tr><th>Track</th><th>Artist</th><th>Album</th><th>Date</th><th>Time</th></tr>'
-    for row in result:
-        entry = PlayingHistoryEntry.from_sql_result(row)
-        track = entry.get_track()
-        if track is None:
-            continue
-        html += '<tr>'
-        track_link = '<a href="/tracks/' + track.track_id + '">' + track.track_name + '</a>'
-        artist_ids = track.artist_ids[1:-1].split(', ')
-        artist_id = artist_ids[0][1:-1]
-        artist_link = '<a href="/artists/' + artist_id + '">' + track.track_artist + '</a>'
-        cols = [track_link, artist_link, track.track_album, entry.date, datetime.fromtimestamp(int(entry.timestamp)/1000.0).strftime('%H:%M:%S')]
-        for col in cols:
-            html += '<td>' + col + '</td>'
-        html += '</tr>'
-    html += '</table>'
-    return html
-
 def polling_loop():
     while True:
         try:
@@ -610,11 +596,31 @@ def index():
     return html + display_currently_playing(token_result)
 
 @route('/history')
-def history():
+@route('/history?limit=<limit>&offset=<offset>')
+def history(limit=100, offset=0):
     html = header()
     token_success, token_result = check_for_token()
     if not token_success:
         return html + token_result
+    result = HistoryTable().get_all_limit_offset(limit, offset)
+    html = '<table>'
+    html += '<tr><th>Track</th><th>Artist</th><th>Album</th><th>Date</th><th>Time</th></tr>'
+    for row in result:
+        entry = PlayingHistoryEntry.from_sql_result(row)
+        track = entry.get_track()
+        if track is None:
+            continue
+        html += '<tr>'
+        track_link = '<a href="/tracks/' + track.track_id + '">' + track.track_name + '</a>'
+        artist_ids = track.artist_ids[1:-1].split(', ')
+        artist_id = artist_ids[0][1:-1]
+        artist_link = '<a href="/artists/' + artist_id + '">' + track.track_artist + '</a>'
+        cols = [track_link, artist_link, track.track_album, entry.date, datetime.fromtimestamp(int(entry.timestamp)/1000.0).strftime('%H:%M:%S')]
+        for col in cols:
+            html += '<td>' + col + '</td>'
+        html += '</tr>'
+    html += '</table>'
+    return html
 
     return html + get_playing_history_html()
 
