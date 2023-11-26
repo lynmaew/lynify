@@ -8,6 +8,7 @@ import time
 import json
 import psycopg2
 import os
+from typing import Optional
 
 SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
 SPOTIFY_CURRENTLY_PLAYING = 'https://api.spotify.com/v1/me/player/currently-playing'
@@ -98,26 +99,35 @@ class Database:
         conn.close()
         return result
     
-    def get_all(self, table_name: str):
+    def get_all(self, table_name: str, order_by: Optional[str] = None):
         conn = self.connect()
         c = conn.cursor()
-        c.execute("SELECT * FROM " + table_name + " ORDER BY timestamp DESC")
+        if order_by is not None:
+            c.execute("SELECT * FROM " + table_name + " ORDER BY " + order_by + " DESC")
+        else:
+            c.execute("SELECT * FROM " + table_name)
         result = c.fetchall()
         conn.close()
         return result
     
-    def get_all_limit(self, table_name: str, limit: int):
+    def get_all_limit(self, table_name: str, limit: int, order_by: Optional[str] = None):
         conn = self.connect()
         c = conn.cursor()
-        c.execute("SELECT * FROM " + table_name + " ORDER BY timestamp DESC LIMIT " + str(limit))
+        if order_by is not None:
+            c.execute("SELECT * FROM " + table_name + " ORDER BY " + order_by + " DESC LIMIT " + str(limit))
+        else:
+            c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit))
         result = c.fetchall()
         conn.close()
         return result
     
-    def get_all_limit_offset(self, table_name: str, limit: int, offset: int):
+    def get_all_limit_offset(self, table_name: str, limit: int, offset: int, order_by: Optional[str] = None):
         conn = self.connect()
         c = conn.cursor()
-        c.execute("SELECT * FROM " + table_name + " ORDER BY timestamp DESC LIMIT " + str(limit) + " OFFSET " + str(offset))
+        if order_by is not None:
+            c.execute("SELECT * FROM " + table_name + " ORDER BY " + order_by + " DESC LIMIT " + str(limit) + " OFFSET " + str(offset))
+        else:
+            c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit) + " OFFSET " + str(offset))
         result = c.fetchall()
         conn.close()
         return result
@@ -125,6 +135,11 @@ class Database:
     def get_most_recent(self, table_name: str):
         conn = self.connect()
         c = conn.cursor()
+        # check if the table has a timestamp column
+        c.execute("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = '" + table_name + "' AND column_name = 'timestamp')")
+        if c.fetchone()[0] == 0:
+            # return the last added
+            c.execute("SELECT * FROM " + table_name + " ORDER BY ROWID DESC LIMIT 1")
         c.execute("SELECT * FROM " + table_name + " ORDER BY timestamp DESC LIMIT 1")
         result = c.fetchall()
         conn.close()
@@ -415,7 +430,7 @@ class HistoryTable:
         return self.database.get_most_recent(self.table_name)
     
     def get_history(self, limit=100, offset=0):
-        return self.database.get_all_limit_offset(self.table_name, limit, offset)
+        return self.database.get_all_limit_offset(self.table_name, limit, offset, order_by='timestamp')
     
 class PlayingHistoryEntry:
     """
@@ -537,7 +552,9 @@ def get_playing_history_html():
         if track is None:
             continue
         html += '<tr>'
-        cols = [track.track_name, track.track_artist, track.track_album, entry.date, datetime.fromtimestamp(int(entry.timestamp)/1000.0).strftime('%H:%M:%S')]
+        track_link = '<a href="/tracks/' + track.track_id + '">' + track.track_name + '</a>'
+        artist_link = '<a href="/artists/' + track.artist_ids[0] + '">' + track.track_artist + '</a>'
+        cols = [track_link, artist_link, track.track_album, entry.date, datetime.fromtimestamp(int(entry.timestamp)/1000.0).strftime('%H:%M:%S')]
         for col in cols:
             html += '<td>' + col + '</td>'
         html += '</tr>'
