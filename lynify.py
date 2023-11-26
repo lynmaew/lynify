@@ -193,13 +193,22 @@ class ArtistTable:
         return result
     
     def get_all(self):  
-        return self.database.get_all(self.table_name)
+        return self.database.get_all(self.table_name, 'followers')
     
     def get_all_limit(self, limit: int):
-        return self.database.get_all_limit(self.table_name, limit)
+        return self.database.get_all_limit(self.table_name, limit, 'followers')
     
     def get_all_limit_offset(self, limit: int, offset: int):
-        return self.database.get_all_limit_offset(self.table_name, limit, offset)
+        return self.database.get_all_limit_offset(self.table_name, limit, offset, 'followers')
+    
+    def get_artist_count(self):
+        query = "SELECT COUNT(*) FROM " + self.table_name
+        conn = self.database.connect()
+        c = conn.cursor()
+        c.execute(query)
+        result = c.fetchall()
+        conn.close()
+        return int(result[0][0])
 
 class Artist:
     """
@@ -315,13 +324,22 @@ class TrackTable:
         self.database.add_entry(self.table_name, self.columns, values)
 
     def get_all(self):
-        return self.database.get_all(self.table_name)
+        return self.database.get_all(self.table_name, 'track_popularity')
     
     def get_all_limit(self, limit: int):
-        return self.database.get_all_limit(self.table_name, limit)
+        return self.database.get_all_limit(self.table_name, limit, 'track_popularity')
     
     def get_all_limit_offset(self, limit: int, offset: int):
-        return self.database.get_all_limit_offset(self.table_name, limit, offset)
+        return self.database.get_all_limit_offset(self.table_name, limit, offset, 'track_popularity')
+    
+    def get_track_count(self):
+        query = "SELECT COUNT(*) FROM " + self.table_name
+        conn = self.database.connect()
+        c = conn.cursor()
+        c.execute(query)
+        result = c.fetchall()
+        conn.close()
+        return int(result[0][0])
 
 class TrackEntry:
     """
@@ -448,6 +466,15 @@ class HistoryTable:
     def get_all_limit_offset(self, limit: int, offset: int):
         return self.database.get_all_limit_offset(self.table_name, limit, offset, 'timestamp')
     
+    def get_track_count(self):
+        query = "SELECT COUNT(*) FROM " + self.table_name
+        conn = self.database.connect()
+        c = conn.cursor()
+        c.execute(query)
+        result = c.fetchall()
+        conn.close()
+        return int(result[0][0])
+
 class PlayingHistoryEntry:
     """
     A class to represent a played track"""
@@ -620,9 +647,15 @@ def history(limit=100, offset=0):
             html += '<td>' + col + '</td>'
         html += '</tr>'
     html += '</table>'
+    # add pagination
+    html += '<div class="w3-bar w3-black">'
+    if offset > 0:
+        prev_offset = min(0, offset - limit)
+        html += '<a href="/history?limit=' + str(limit) + '&offset=' + str(prev_offset) + '" class="w3-bar-item w3-button">Previous</a>'
+    if offset+limit < HistoryTable().get_track_count():
+        html += '<a href="/history?limit=' + str(limit) + '&offset=' + str(offset + limit) + '" class="w3-bar-item w3-button">Next</a>'
+    html += '</div>'
     return html
-
-    return html + get_playing_history_html()
 
 @route('/artists')
 @route('/artists?limit=<limit>&offset=<offset>')
@@ -645,6 +678,15 @@ def artists(limit=100, offset=0):
             html += '<td>' + col + '</td>'
         html += '</tr>'
     html += '</table>'
+
+    # add pagination
+    html += '<div class="w3-bar w3-black">'
+    if offset > 0:
+        prev_offset = min(0, offset - limit)
+        html += '<a href="/artists?limit=' + str(limit) + '&offset=' + str(prev_offset) + '" class="w3-bar-item w3-button">Previous</a>'
+    if offset+limit < artist_table.get_artist_count():
+        html += '<a href="/artists?limit=' + str(limit) + '&offset=' + str(offset + limit) + '" class="w3-bar-item w3-button">Next</a>'
+    html += '</div>'
     return html
 
 @route('/artists/<artist_id>')
@@ -690,6 +732,14 @@ def tracks(limit=100, offset=0):
             html += '<td>' + col + '</td>'
         html += '</tr>'
     html += '</table>'
+    # add pagination
+    html += '<div class="w3-bar w3-black">'
+    if offset > 0:
+        prev_offset = min(0, offset - limit)
+        html += '<a href="/tracks?limit=' + str(limit) + '&offset=' + str(prev_offset) + '" class="w3-bar-item w3-button">Previous</a>'
+    if offset+limit < track_table.get_track_count():
+        html += '<a href="/tracks?limit=' + str(limit) + '&offset=' + str(offset + limit) + '" class="w3-bar-item w3-button">Next</a>'
+    html += '</div>'
     return html
 
 @route('/tracks/<track_id>')
