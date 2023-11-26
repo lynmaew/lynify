@@ -171,3 +171,94 @@ class Database:
         result = c.fetchall()
         conn.close()
         return result
+
+    def get_with_left_join(
+        self,
+        table_name: str,
+        join_table_name: str,
+        join_column: str,
+        join_table_column: str,
+        order_by: Optional[str] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ):
+        conn = self.connect()
+        c = conn.cursor()
+        if order_by is not None:
+            if limit is not None and offset is not None:
+                c.execute(
+                    "SELECT * FROM "
+                    + table_name
+                    + " LEFT JOIN "
+                    + join_table_name
+                    + " ON "
+                    + table_name
+                    + "."
+                    + join_column
+                    + " = "
+                    + join_table_name
+                    + "."
+                    + join_table_column
+                    + " ORDER BY "
+                    + order_by
+                    + " DESC LIMIT "
+                    + str(limit)
+                    + " OFFSET "
+                    + str(offset)
+                )
+            else:
+                c.execute(
+                    "SELECT * FROM "
+                    + table_name
+                    + " LEFT JOIN "
+                    + join_table_name
+                    + " ON "
+                    + table_name
+                    + "."
+                    + join_column
+                    + " = "
+                    + join_table_name
+                    + "."
+                    + join_table_column
+                    + " ORDER BY "
+                    + order_by
+                    + " DESC"
+                )
+        else:
+            if limit is not None and offset is not None:
+                c.execute(
+                    "SELECT * FROM "
+                    + table_name
+                    + " LEFT JOIN "
+                    + join_table_name
+                    + " ON "
+                    + table_name
+                    + "."
+                    + join_column
+                    + " = "
+                    + join_table_name
+                    + "."
+                    + join_table_column
+                    + " LIMIT "
+                    + str(limit)
+                    + " OFFSET "
+                    + str(offset)
+                )
+            else:
+                c.execute(
+                    "SELECT * FROM "
+                    + table_name
+                    + " LEFT JOIN "
+                    + join_table_name
+                    + " ON "
+                    + table_name
+                    + "."
+                    + join_column
+                    + " = "
+                    + join_table_name
+                    + "."
+                    + join_table_column
+                )
+        result = c.fetchall()
+        conn.close()
+        return result

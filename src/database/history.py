@@ -50,6 +50,14 @@ class HistoryTable:
     def get_all_limit_offset(self, limit: int, offset: int):
         return self.database.get_all_limit_offset(self.table_name, limit, offset, "timestamp")
 
+    def get_with_tracks(self, limit: int, offset: int):
+        # left join the track table on a part of the history table
+        ttable = TrackTable()
+        result = self.database.get_with_left_join(
+            self.table_name, ttable.table_name, "track_id", "track_id", limit, offset, "timestamp"
+        )
+        return result
+
     def get_track_count(self):
         query = "SELECT COUNT(*) FROM " + self.table_name
         conn = self.database.connect()

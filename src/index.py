@@ -29,12 +29,18 @@ def history():
     token_success, token_result = SpotifyLogin(request.url)
     if not token_success:
         return html + token_result
-    result = HistoryTable().get_all_limit_offset(limit, offset)
+    # left join to reduce sql calls
+    result = HistoryTable().get_with_tracks(limit, offset)
     html += "<table>"
     html += "<tr><th>Track</th><th>Artist</th><th>Album</th><th>Date</th><th>Time</th></tr>"
     for row in result:
-        entry = PlayingHistoryEntry.from_sql_result(row)
-        track = entry.get_track()
+        history_result = row[:3]
+        track_result = row[3:]
+        entry = PlayingHistoryEntry.from_sql_result(history_result)
+        if row[3] is None:
+            track = entry.get_track()
+        else:
+            track = TrackEntry.from_sql_result(track_result)
         if track is None:
             continue
         html += "<tr>"
