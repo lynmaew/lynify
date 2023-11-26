@@ -314,6 +314,15 @@ class TrackTable:
         values = [track.track_id, track.track_name, track.track_artist, track.track_album, track.track_duration, track.track_popularity, track.track_release_date, track.track_explicit, str(track.artist_genres), str(track.artist_ids)]
         self.database.add_entry(self.table_name, self.columns, values)
 
+    def get_all(self):
+        return self.database.get_all(self.table_name)
+    
+    def get_all_limit(self, limit: int):
+        return self.database.get_all_limit(self.table_name, limit)
+    
+    def get_all_limit_offset(self, limit: int, offset: int):
+        return self.database.get_all_limit_offset(self.table_name, limit, offset)
+
 class TrackEntry:
     """
     A class used to represent a played track"""
@@ -608,14 +617,15 @@ def history():
     return html + get_playing_history_html()
 
 @route('/artists')
-def artists():
+@route('/artists?limit=<limit>&offset=<offset>')
+def artists(limit=100, offset=0):
     html = header()
     token_success, token_result = check_for_token()
     if not token_success:
         return html + token_result
 
     artist_table = ArtistTable()
-    result = artist_table.get_all()
+    result = artist_table.get_all_limit_offset(limit, offset)
     html += '<table>'
     html += '<tr><th>Artist</th><th>Genres</th><th>Popularity</th><th>Followers</th></tr>'
     for row in result:
@@ -649,21 +659,24 @@ def artist(artist_id):
     return html
 
 @route('/tracks')
-def tracks():
+@route('/tracks?limit=<limit>&offset=<offset>')
+def tracks(limit=100, offset=0):
     html = header()
     token_success, token_result = check_for_token()
     if not token_success:
         return html + token_result
 
     track_table = TrackTable()
-    result = track_table.get_all()
+    result = track_table.get_all_limit_offset(limit, offset)
     html += '<table>'
     html += '<tr><th>Track</th><th>Artist</th><th>Album</th><th>Duration</th><th>Popularity</th><th>Release Date</th><th>Explicit</th><th>Genres</th><th>Artist IDs</th></tr>'
     for row in result:
         track = TrackEntry.from_sql_result(row)
         html += '<tr>'
         track_link = '<a href="/tracks/' + track.track_id + '">' + track.track_name + '</a>'
-        artist_link = '<a href="/artists/' + track.artist_ids[0] + '">' + track.track_artist + '</a>'
+        artist_ids = track.artist_ids[1:-1].split(', ')
+        artist_id = artist_ids[0][1:-1]
+        artist_link = '<a href="/artists/' + artist_id + '">' + track.track_artist + '</a>'
         cols = [track_link, artist_link, track.track_album, str(track.track_duration), str(track.track_popularity), track.track_release_date, str(track.track_explicit), str(track.artist_genres), str(track.artist_ids)]
         for col in cols:
             html += '<td>' + col + '</td>'
