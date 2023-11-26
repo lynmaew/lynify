@@ -162,7 +162,7 @@ class AccessToken:
     def __init__(self) -> None:
         self.database = Database()
         self.table_name = 'access_token'
-        self.columns = ['user_id text', 'access_token text']
+        self.columns = ['user_id text', 'access_token text', 'refresh_token text', 'expires_at integer']
         if not self.database.table_exists(self.table_name):
             self.database.create_table(self.table_name, self.columns)
 
@@ -178,16 +178,25 @@ class AccessToken:
     
     def get_token(self, user_id):
         result = self.database.get_entry(self.table_name, ['user_id'], [user_id])
+        # check if the token has expired
+        if len(result) > 0 and int(result[0][3]) < int(time.time() * 1000):
+            # refresh the token
+            oauth = SpotifyOAuth(client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET, redirect_uri=SPOTIPY_REDIRECT_URI, scope='user-read-currently-playing')
+            token = oauth.refresh_access_token(result[0][2])
+            # update the token
+            expires_at = int(time.time() * 1000) + token['expires_in'] * 1000
+            self.database.update_entry(self.table_name, ['access_token', 'refresh_token', 'expires_at'], [token['access_token'], token['refresh_token'], expires_at], ['user_id'], [user_id])
+            return token['access_token']
         if len(result) == 0:
             return None
         return result[0][1]
     
-    def add_token(self, user_id, access_token):
+    def add_token(self, user_id, access_token, refresh_token, expires_at):
         if self.has_token(user_id):
             # update the token
-            self.database.update_entry(self.table_name, ['access_token text'], [access_token], ['user_id text'], [user_id])
+            self.database.update_entry(self.table_name, ['access_token', 'refresh_token', 'expires_at'], [access_token, refresh_token, expires_at], ['user_id'], [user_id])
             return
-        values = [user_id, access_token]
+        values = [user_id, access_token, refresh_token, expires_at]
         self.database.add_entry(self.table_name, self.columns, values)
 
 
@@ -591,7 +600,7 @@ def check_for_token():
         return True, token
     token = oauth.get_cached_token()
     if token:
-        AccessToken().add_token(SPOTIFY_USER_ID, token['access_token'])
+        AccessToken().add_token(SPOTIFY_USER_ID, token['access_token'], token['refresh_token'], int(time.time() * 1000) + token['expires_in'] * 1000)
         return True, token['access_token']
     else:
         url = request.url
@@ -599,7 +608,7 @@ def check_for_token():
         if code != url:
             token = oauth.get_access_token(code)
             if token:
-                AccessToken().add_token(SPOTIFY_USER_ID, token['access_token'])
+                AccessToken().add_token(SPOTIFY_USER_ID, token['access_token'], token['refresh_token'], int(time.time() * 1000) + token['expires_in'] * 1000)
                 return True, token['access_token']
         else:
             auth_url = oauth.get_authorize_url()
@@ -825,9 +834,6 @@ def track(track_id):
     return html
 
 def main():
-    # Database().drop_table('artists')
-    # Database().drop_table('tracks')
-    # Database().drop_table('playing_history')
     threading.Thread(target=polling_loop).start()
     print('Starting server...\n')
     print("APP_LOCATION: " + os.environ.get('APP_LOCATION')
