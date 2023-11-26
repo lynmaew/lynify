@@ -99,6 +99,16 @@ class Database:
         conn.close()
         return result
     
+    def update_entry(self, table_name: str, columns: list, values: list, where_columns: list, where_values: list):
+        column_names = [col.split()[0] for col in columns]
+        where_column_names = [col.split()[0] for col in where_columns]
+        conn = self.connect()
+        c = conn.cursor()
+        sql = "UPDATE " + table_name + " SET " + ", ".join([col + " = " + "%s" for col in column_names]) + " WHERE " + " AND ".join([col + " = " + "%s" for col in where_column_names])
+        c.execute(sql, values + where_values)
+        conn.commit()
+        conn.close()
+    
     def get_all(self, table_name: str, order_by: Optional[str] = None):
         conn = self.connect()
         c = conn.cursor()
@@ -144,6 +154,42 @@ class Database:
         result = c.fetchall()
         conn.close()
         return result
+
+@singleton
+class AccessToken:
+    """
+    A class to store and retrieve a Spotify access token in a sql table"""
+    def __init__(self) -> None:
+        self.database = Database()
+        self.table_name = 'access_token'
+        self.columns = ['user_id text', 'access_token text']
+        if not self.database.table_exists(self.table_name):
+            self.database.create_table(self.table_name, self.columns)
+
+    def table_exists(self):
+        return self.database.table_exists(self.table_name)
+    
+    def create_table(self):
+        self.database.create_table(self.table_name, self.columns)
+
+    def has_token(self, user_id):
+        result = self.database.get_entry(self.table_name, ['user_id'], [user_id])
+        return len(result) > 0
+    
+    def get_token(self, user_id):
+        result = self.database.get_entry(self.table_name, ['user_id'], [user_id])
+        if len(result) == 0:
+            return None
+        return result[0][1]
+    
+    def add_token(self, user_id, access_token):
+        if self.has_token(user_id):
+            # update the token
+            self.database.update_entry(self.table_name, ['access_token text'], [access_token], ['user_id text'], [user_id])
+            return
+        values = [user_id, access_token]
+        self.database.add_entry(self.table_name, self.columns, values)
+
 
 @singleton
 class ArtistTable:
@@ -540,8 +586,12 @@ def get_currently_playing(access_token):
 
 def check_for_token():
     oauth = SpotifyOAuth(client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET, redirect_uri=SPOTIPY_REDIRECT_URI, scope='user-read-currently-playing')
+    if AccessToken().has_token(SPOTIFY_USER_ID):
+        token = AccessToken().get_token(SPOTIFY_USER_ID)
+        return True, token
     token = oauth.get_cached_token()
     if token:
+        AccessToken().add_token(SPOTIFY_USER_ID, token['access_token'])
         return True, token['access_token']
     else:
         url = request.url
@@ -549,6 +599,7 @@ def check_for_token():
         if code != url:
             token = oauth.get_access_token(code)
             if token:
+                AccessToken().add_token(SPOTIFY_USER_ID, token['access_token'])
                 return True, token['access_token']
         else:
             auth_url = oauth.get_authorize_url()
