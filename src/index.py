@@ -16,7 +16,7 @@ def index():
     if not token_success:
         return html + token_result
 
-    return html + display_currently_playing(token_result)
+    return html + display_currently_playing()
 
 
 @route("/history")

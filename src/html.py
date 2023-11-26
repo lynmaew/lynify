@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from typing import Tuple
 
 from spotipy.oauth2 import SpotifyOAuth
 
@@ -52,7 +53,10 @@ def display_currently_playing():
         return html
 
 
-def SpotifyLogin(request):
+def SpotifyLogin(request_url) -> Tuple[bool, str]:
+    """
+    Checks if the user is logged into Spotify and returns an html login button if they are not
+    """
     oauth = SpotifyOAuth(
         client_id=SPOTIFY_CLIENT_ID,
         client_secret=SPOTIFY_CLIENT_SECRET,
@@ -72,9 +76,8 @@ def SpotifyLogin(request):
         )
         return True, token["access_token"]
     else:
-        url = request.url
-        code = oauth.parse_response_code(url)
-        if code != url:
+        code = oauth.parse_response_code(request_url)
+        if code != request_url:
             token = oauth.get_access_token(code)
             if token:
                 AccessToken().add_token(
