@@ -19,7 +19,13 @@ class Database:
         self.database_name = DATABASE_NAME
         self.database_url = DATABASE_URL
         # conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-        # conn = psycopg2.connect(database="postgres", user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
+        # conn = psycopg2.connect(
+        #     database="postgres",
+        #     user=POSTGRES_USER,
+        #     password=POSTGRES_PASSWORD,
+        #     host=POSTGRES_HOST,
+        #     port=POSTGRES_PORT
+        # )
         # conn.autocommit = True
         # check if the database exists
         # c = conn.cursor()
@@ -29,7 +35,13 @@ class Database:
         # conn.close()
 
     def connect(self):
-        # return psycopg2.connect(database=self.database_name, user=POSTGRES_USER, password=POSTGRES_PASSWORD, host=POSTGRES_HOST, port=POSTGRES_PORT)
+        # return psycopg2.connect(
+        #     database=self.database_name,
+        #     user=POSTGRES_USER,
+        #     password=POSTGRES_PASSWORD,
+        #     host=POSTGRES_HOST,
+        #     port=POSTGRES_PORT,
+        # )
         return psycopg2.connect(DATABASE_URL, sslmode="require")
 
     def table_exists(self, table_name: str):

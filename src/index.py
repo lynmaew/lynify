@@ -158,7 +158,21 @@ def tracks():
     track_table = TrackTable()
     result = track_table.get_all_limit_offset(limit, offset)
     html += "<table>"
-    html += "<tr><th>Track</th><th>Artist</th><th>Album</th><th>Duration</th><th>Popularity</th><th>Release Date</th><th>Explicit</th><th>Genres</th><th>Artist IDs</th></tr>"
+    col_names = [
+        "Track",
+        "Artist",
+        "Album",
+        "Duration",
+        "Popularity",
+        "Release Date",
+        "Explicit",
+        "Genres",
+        "Artist IDs",
+    ]
+    html += "<tr>"
+    for col_name in col_names:
+        html += "<th>" + col_name + "</th>"
+    html += "</tr>"
     for row in result:
         track = TrackEntry.from_sql_result(row)
         html += "<tr>"
@@ -213,7 +227,21 @@ def track(track_id):
 
     track = TrackTable().get_track(track_id)
     html += "<table>"
-    html += "<tr><th>Track</th><th>Artist</th><th>Album</th><th>Duration</th><th>Popularity</th><th>Release Date</th><th>Explicit</th><th>Genres</th><th>Artist IDs</th></tr>"
+    col_names = [
+        "Track",
+        "Artist",
+        "Album",
+        "Duration",
+        "Popularity",
+        "Release Date",
+        "Explicit",
+        "Genres",
+        "Artist IDs",
+    ]
+    html += "<tr>"
+    for col_name in col_names:
+        html += "<th>" + col_name + "</th>"
+    html += "</tr>"
     html += "<tr>"
     track_link = '<a href="/tracks/' + track.track_id + '">' + track.track_name + "</a>"
     artist_ids = track.artist_ids[1:-1].split(", ")
