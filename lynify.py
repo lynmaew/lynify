@@ -678,7 +678,7 @@ def track(track_id):
     if not token_success:
         return html + token_result
 
-    track = TrackEntry.from_sql(track_id)
+    track = TrackTable().get_track(track_id)
     html += '<table>'
     html += '<tr><th>Track</th><th>Artist</th><th>Album</th><th>Duration</th><th>Popularity</th><th>Release Date</th><th>Explicit</th><th>Genres</th><th>Artist IDs</th></tr>'
     html += '<tr>'
