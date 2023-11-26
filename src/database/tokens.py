@@ -1,6 +1,7 @@
 import time
 from typing import Optional
 
+import spotipy
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 
@@ -19,8 +20,8 @@ class AccessToken:
         self.database = Database()
         self.table_name = "access_token"
         self.columns = ["user_id text", "access_token text", "refresh_token text", "expires_at bigint"]
-        if not self.database.table_exists(self.table_name):
-            self.database.create_table(self.table_name, self.columns)
+        if not self.table_exists():
+            self.create_table()
 
     def table_exists(self):
         return self.database.table_exists(self.table_name)
@@ -31,12 +32,16 @@ class AccessToken:
     def has_token(self, user_id: Optional[str] = None):
         if user_id is None:
             user_id = SPOTIFY_USER_ID
+        if not self.table_exists():
+            self.create_table()
         result = self.database.get_entry(self.table_name, ["user_id"], [user_id])
         return len(result) > 0
 
     def get_token(self, user_id: Optional[str] = None):
         if user_id is None:
             user_id = SPOTIFY_USER_ID
+        if not self.has_token(user_id):
+            return None
         result = self.database.get_entry(self.table_name, ["user_id"], [user_id])
         # check if the token has expired
         if len(result) > 0 and int(result[0][3]) < int(time.time() * 1000):
@@ -63,6 +68,9 @@ class AccessToken:
         return result[0][1]
 
     def add_token(self, user_id, access_token, refresh_token, expires_at):
+        if not self.table_exists():
+            self.create_table()
+
         if self.has_token(user_id):
             # update the token
             self.database.update_entry(
@@ -77,5 +85,8 @@ class AccessToken:
         self.database.add_entry(self.table_name, self.columns, values)
 
     def get_currently_playing(access_token):
-        response = Spotify(access_token).current_user_playing_track()
+        try:
+            response = Spotify(access_token).current_user_playing_track()
+        except spotipy.client.SpotifyException as e:
+            return e
         return response

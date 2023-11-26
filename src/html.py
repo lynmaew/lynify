@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 from typing import Tuple
 
+import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 from src.config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_USER_ID, SPOTIPY_REDIRECT_URI
@@ -29,10 +30,28 @@ def header():
     return html
 
 
+def SpotifyLoginButton() -> str:
+    oauth = SpotifyOAuth(
+        client_id=SPOTIFY_CLIENT_ID,
+        client_secret=SPOTIFY_CLIENT_SECRET,
+        redirect_uri=SPOTIPY_REDIRECT_URI,
+        scope="user-read-currently-playing",
+    )
+    auth_url = oauth.get_authorize_url()
+    htmlLoginButton = "<a href='" + auth_url + "'>Login to Spotify</a>"
+    return htmlLoginButton
+
+
 def display_currently_playing():
     currently_playing = AccessToken().get_currently_playing()
     html = "<h1>Currently Playing</h1>"
-    if currently_playing is None or not currently_playing["is_playing"]:
+    if currently_playing is None:
+        return html + "No currently playing track"
+    elif isinstance(currently_playing, spotipy.SpotifyException):
+        html += "Spotify API error: " + currently_playing.msg + " " + currently_playing.reason
+        html += SpotifyLoginButton()
+        return html
+    elif not currently_playing["is_playing"]:
         return html + "No currently playing track"
     else:
         timestamp = currently_playing["timestamp"]
