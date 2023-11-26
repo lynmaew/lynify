@@ -193,13 +193,13 @@ class ArtistTable:
         return result
     
     def get_all(self):  
-        return self.database.get_all(self.table_name, 'followers')
+        return self.database.get_all(self.table_name, 'artist_followers')
     
     def get_all_limit(self, limit: int):
-        return self.database.get_all_limit(self.table_name, limit, 'followers')
+        return self.database.get_all_limit(self.table_name, limit, 'artist_followers')
     
     def get_all_limit_offset(self, limit: int, offset: int):
-        return self.database.get_all_limit_offset(self.table_name, limit, offset, 'followers')
+        return self.database.get_all_limit_offset(self.table_name, limit, offset, 'artist_followers')
     
     def get_artist_count(self):
         query = "SELECT COUNT(*) FROM " + self.table_name
@@ -624,7 +624,7 @@ def index():
 
 @route('/history')
 @route('/history?limit=<limit>&offset=<offset>')
-def history(limit=100, offset=0):
+def history(limit=25, offset=0):
     html = header()
     token_success, token_result = check_for_token()
     if not token_success:
@@ -659,7 +659,7 @@ def history(limit=100, offset=0):
 
 @route('/artists')
 @route('/artists?limit=<limit>&offset=<offset>')
-def artists(limit=100, offset=0):
+def artists(limit=25, offset=0):
     html = header()
     token_success, token_result = check_for_token()
     if not token_success:
@@ -710,7 +710,7 @@ def artist(artist_id):
 
 @route('/tracks')
 @route('/tracks?limit=<limit>&offset=<offset>')
-def tracks(limit=100, offset=0):
+def tracks(limit=25, offset=0):
     html = header()
     token_success, token_result = check_for_token()
     if not token_success:
