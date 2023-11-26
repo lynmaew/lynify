@@ -94,11 +94,9 @@ class Database:
         conn = self.connect()
         c = conn.cursor()
         sql = "SELECT * FROM " + table_name + " WHERE " + " AND ".join([col + " = " + "%s" for col in column_names])
-        print(sql)
         c.execute(sql, values)
         result = c.fetchall()
         conn.close()
-        print(result)
         return result
     
     def update_entry(self, table_name: str, columns: list, values: list, where_columns: list, where_values: list):
@@ -136,15 +134,12 @@ class Database:
     def get_all_limit_offset(self, table_name: str, limit: int, offset: int, order_by: Optional[str] = None):
         conn = self.connect()
         c = conn.cursor()
-        print(offset)
-        print(limit)
         if order_by is not None:
             c.execute("SELECT * FROM " + table_name + " ORDER BY " + order_by + " DESC LIMIT " + str(limit) + " OFFSET " + str(offset))
         else:
             c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit) + " OFFSET " + str(offset))
         result = c.fetchall()
         conn.close()
-        print(result)
         return result
     
     def get_most_recent(self, table_name: str):
@@ -709,7 +704,7 @@ def history():
     # add pagination
     html += '<div class="w3-bar w3-black">'
     if offset > 0:
-        prev_offset = min(0, offset - limit)
+        prev_offset = max(0, offset - limit)
         html += '<a href="/history?limit=' + str(limit) + '&offset=' + str(prev_offset) + '" class="w3-bar-item w3-button">Previous</a>'
     if offset+limit < HistoryTable().get_track_count():
         html += '<a href="/history?limit=' + str(limit) + '&offset=' + str(offset + limit) + '" class="w3-bar-item w3-button">Next</a>'
@@ -744,7 +739,7 @@ def artists():
     # add pagination
     html += '<div class="w3-bar w3-black">'
     if offset > 0:
-        prev_offset = min(0, offset - limit)
+        prev_offset = max(0, offset - limit)
         html += '<a href="/artists?limit=' + str(limit) + '&offset=' + str(prev_offset) + '" class="w3-bar-item w3-button">Previous</a>'
     if offset+limit < artist_table.get_artist_count():
         html += '<a href="/artists?limit=' + str(limit) + '&offset=' + str(offset + limit) + '" class="w3-bar-item w3-button">Next</a>'
@@ -800,7 +795,7 @@ def tracks():
     # add pagination
     html += '<div class="w3-bar w3-black">'
     if offset > 0:
-        prev_offset = min(0, offset - limit)
+        prev_offset = max(0, offset - limit)
         html += '<a href="/tracks?limit=' + str(limit) + '&offset=' + str(prev_offset) + '" class="w3-bar-item w3-button">Previous</a>'
     if offset+limit < track_table.get_track_count():
         html += '<a href="/tracks?limit=' + str(limit) + '&offset=' + str(offset + limit) + '" class="w3-bar-item w3-button">Next</a>'
