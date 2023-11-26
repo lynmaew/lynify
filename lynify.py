@@ -603,7 +603,7 @@ def history(limit=100, offset=0):
     if not token_success:
         return html + token_result
     result = HistoryTable().get_all_limit_offset(limit, offset)
-    html = '<table>'
+    html += '<table>'
     html += '<tr><th>Track</th><th>Artist</th><th>Album</th><th>Date</th><th>Time</th></tr>'
     for row in result:
         entry = PlayingHistoryEntry.from_sql_result(row)
