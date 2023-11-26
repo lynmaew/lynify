@@ -9,7 +9,7 @@ from src.config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_USER_ID
 from src.database.tokens import AccessToken
 
 
-def nav_bar():
+def nav_bar() -> str:
     html = '<div class="w3-bar w3-black">'
     html += '<a href="/" class="w3-bar-item w3-button">Currently Playing</a>'
     html += '<a href="/history" class="w3-bar-item w3-button">History</a>'
@@ -19,7 +19,7 @@ def nav_bar():
     return html
 
 
-def header():
+def header() -> str:
     html = '<head><link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"></head>'
     html += "<style>table, th, td {border: 1px solid black;}</style>"
     html += "<style>table {border-collapse: collapse;}</style>"
@@ -42,13 +42,17 @@ def SpotifyLoginButton() -> str:
     return htmlLoginButton
 
 
-def display_currently_playing():
+def display_currently_playing() -> str:
+    """
+    Returns a string of html containing the currently playing track
+    If there is a spotify api error, returns a login button
+    """
     currently_playing = AccessToken().get_currently_playing()
     html = "<h1>Currently Playing</h1>"
     if currently_playing is None:
         return html + "No currently playing track"
     elif isinstance(currently_playing, spotipy.SpotifyException):
-        html += "Spotify API error: " + currently_playing.msg + " " + currently_playing.reason
+        html += "Spotify API error: " + str(currently_playing)
         html += SpotifyLoginButton()
         return html
     elif not currently_playing["is_playing"]:
@@ -74,7 +78,8 @@ def display_currently_playing():
 
 def SpotifyLogin(request_url) -> Tuple[bool, str]:
     """
-    Checks if the user is logged into Spotify and returns an html login button if they are not
+    Returns True and an access token if available
+    Returns False and a login button if otherwise
     """
     oauth = SpotifyOAuth(
         client_id=SPOTIFY_CLIENT_ID,
