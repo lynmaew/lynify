@@ -54,7 +54,7 @@ class HistoryTable:
         # left join the track table on a part of the history table
         ttable = TrackTable()
         result = self.database.get_with_left_join(
-            self.table_name, ttable.table_name, "track_id", "track_id", limit, offset, "timestamp"
+            self.table_name, ttable.table_name, "track_id", "track_id", "timestamp", limit, offset
         )
         return result
 
