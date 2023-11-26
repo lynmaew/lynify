@@ -90,10 +90,10 @@ class AccessToken:
         values = [user_id, access_token, refresh_token, expires_at]
         self.database.add_entry(self.table_name, self.columns, values)
 
-    def get_currently_playing(user_id: Optional[str] = None) -> Union[dict, Exception, None]:
+    def get_currently_playing(self, user_id: Optional[str] = None) -> Union[dict, Exception, None]:
         if user_id is None:
             user_id = SPOTIFY_USER_ID
-        access_token = AccessToken().get_token(user_id)
+        access_token = self.get_token(user_id)
         if access_token is None:
             return TokenException("No access token")
         try:
