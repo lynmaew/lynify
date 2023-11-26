@@ -162,7 +162,7 @@ class AccessToken:
     def __init__(self) -> None:
         self.database = Database()
         self.table_name = 'access_token'
-        self.columns = ['user_id text', 'access_token text', 'refresh_token text', 'expires_at integer']
+        self.columns = ['user_id text', 'access_token text', 'refresh_token text', 'expires_at bigint']
         if not self.database.table_exists(self.table_name):
             self.database.create_table(self.table_name, self.columns)
 
