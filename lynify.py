@@ -94,9 +94,11 @@ class Database:
         conn = self.connect()
         c = conn.cursor()
         sql = "SELECT * FROM " + table_name + " WHERE " + " AND ".join([col + " = " + "%s" for col in column_names])
+        print(sql)
         c.execute(sql, values)
         result = c.fetchall()
         conn.close()
+        print(result)
         return result
     
     def update_entry(self, table_name: str, columns: list, values: list, where_columns: list, where_values: list):
@@ -677,8 +679,9 @@ def index():
     return html + display_currently_playing(token_result)
 
 @route('/history')
-@route('/history?limit=<limit>&offset=<offset>')
-def history(limit=25, offset=0):
+def history():
+    limit = request.query.limit or 25
+    offset = request.query.offset or 0
     limit = int(limit)
     offset = int(offset)
     html = header()
@@ -714,8 +717,9 @@ def history(limit=25, offset=0):
     return html
 
 @route('/artists')
-@route('/artists?limit=<limit>&offset=<offset>')
-def artists(limit=25, offset=0):
+def artists():
+    limit = request.query.limit or 25
+    offset = request.query.offset or 0
     limit = int(limit)
     offset = int(offset)
     html = header()
@@ -767,8 +771,9 @@ def artist(artist_id):
     return html
 
 @route('/tracks')
-@route('/tracks?limit=<limit>&offset=<offset>')
-def tracks(limit=25, offset=0):
+def tracks():
+    limit = request.query.limit or 25
+    offset = request.query.offset or 0
     limit = int(limit)
     offset = int(offset)
     html = header()
