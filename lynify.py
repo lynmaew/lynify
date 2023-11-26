@@ -674,8 +674,11 @@ def tracks(limit=100, offset=0):
         track = TrackEntry.from_sql_result(row)
         html += '<tr>'
         track_link = '<a href="/tracks/' + track.track_id + '">' + track.track_name + '</a>'
+        print(track.artist_ids)
         artist_ids = track.artist_ids[1:-1].split(', ')
+        print(artist_ids)
         artist_id = artist_ids[0][1:-1]
+        print(artist_id)
         artist_link = '<a href="/artists/' + artist_id + '">' + track.track_artist + '</a>'
         cols = [track_link, artist_link, track.track_album, str(track.track_duration), str(track.track_popularity), track.track_release_date, str(track.track_explicit), str(track.artist_genres), str(track.artist_ids)]
         for col in cols:
