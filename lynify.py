@@ -134,12 +134,15 @@ class Database:
     def get_all_limit_offset(self, table_name: str, limit: int, offset: int, order_by: Optional[str] = None):
         conn = self.connect()
         c = conn.cursor()
+        print(offset)
+        print(limit)
         if order_by is not None:
             c.execute("SELECT * FROM " + table_name + " ORDER BY " + order_by + " DESC LIMIT " + str(limit) + " OFFSET " + str(offset))
         else:
             c.execute("SELECT * FROM " + table_name + " LIMIT " + str(limit) + " OFFSET " + str(offset))
         result = c.fetchall()
         conn.close()
+        print(result)
         return result
     
     def get_most_recent(self, table_name: str):
