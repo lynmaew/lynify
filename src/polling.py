@@ -6,15 +6,18 @@ from src.database.tracks import TrackTable
 
 
 def poll_for_playing_history():
-    token_result, token = AccessToken().get_token()
-    if not token_result:
+    token = AccessToken().get_token()
+    if token is None:
         print("Failed to get token")
         return False
-    currently_playing = AccessToken().get_currently_playing(token)
+    currently_playing = AccessToken().get_currently_playing()
     if currently_playing is None:
         print("No currently playing track")
         return False
-    if currently_playing["is_playing"]:
+    elif isinstance(currently_playing, Exception):
+        print("Issue with token: " + str(currently_playing))
+        return False
+    elif currently_playing["is_playing"]:
         TrackTable().add_track(currently_playing)
         HistoryTable().add_entry(currently_playing)
     return True

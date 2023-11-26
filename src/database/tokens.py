@@ -1,5 +1,5 @@
 import time
-from typing import Optional
+from typing import Optional, Union
 
 import spotipy
 from spotipy import Spotify
@@ -8,6 +8,12 @@ from spotipy.oauth2 import SpotifyOAuth
 from src.config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_USER_ID, SPOTIPY_REDIRECT_URI
 from src.database.database import Database
 from src.utils import singleton
+
+
+class TokenException(Exception):
+    """Raised when there is a problem with the access token"""
+
+    pass
 
 
 @singleton
@@ -37,7 +43,7 @@ class AccessToken:
         result = self.database.get_entry(self.table_name, ["user_id"], [user_id])
         return len(result) > 0
 
-    def get_token(self, user_id: Optional[str] = None):
+    def get_token(self, user_id: Optional[str] = None) -> Optional[str]:
         if user_id is None:
             user_id = SPOTIFY_USER_ID
         if not self.has_token(user_id):
@@ -84,7 +90,12 @@ class AccessToken:
         values = [user_id, access_token, refresh_token, expires_at]
         self.database.add_entry(self.table_name, self.columns, values)
 
-    def get_currently_playing(access_token):
+    def get_currently_playing(user_id: Optional[str] = None) -> Union[dict, Exception, None]:
+        if user_id is None:
+            user_id = SPOTIFY_USER_ID
+        access_token = AccessToken().get_token(user_id)
+        if access_token is None:
+            return TokenException("No access token")
         try:
             response = Spotify(access_token).current_user_playing_track()
         except spotipy.client.SpotifyException as e:
