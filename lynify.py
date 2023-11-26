@@ -676,6 +676,8 @@ def index():
 @route('/history')
 @route('/history?limit=<limit>&offset=<offset>')
 def history(limit=25, offset=0):
+    limit = int(limit)
+    offset = int(offset)
     html = header()
     token_success, token_result = check_for_token()
     if not token_success:
@@ -711,6 +713,8 @@ def history(limit=25, offset=0):
 @route('/artists')
 @route('/artists?limit=<limit>&offset=<offset>')
 def artists(limit=25, offset=0):
+    limit = int(limit)
+    offset = int(offset)
     html = header()
     token_success, token_result = check_for_token()
     if not token_success:
@@ -762,6 +766,8 @@ def artist(artist_id):
 @route('/tracks')
 @route('/tracks?limit=<limit>&offset=<offset>')
 def tracks(limit=25, offset=0):
+    limit = int(limit)
+    offset = int(offset)
     html = header()
     token_success, token_result = check_for_token()
     if not token_success:
