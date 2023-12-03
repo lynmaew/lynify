@@ -19,7 +19,10 @@ def nav_bar() -> str:
 
 
 def header() -> str:
-    html = '<head><link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"></head>'
+    html = "<head>"
+    html += '<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">'
+    html += '<link rel="shortcut icon" href="images/favicon.ico" type="image/svg">'
+    html += "</head>"
     html += "<style>table, th, td {border: 1px solid black;}</style>"
     html += "<style>table {border-collapse: collapse;}</style>"
     html += "<style>th, td {padding: 5px;}</style>"
