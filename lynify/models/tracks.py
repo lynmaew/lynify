@@ -1,9 +1,9 @@
 from spotipy import Spotify
 
-from src.database.artists import Artist, ArtistTable
-from src.database.database import Database
-from src.database.tokens import AccessToken
-from src.utils import singleton
+from lynify.models.artists import Artist, ArtistTable
+from lynify.models.database import Database
+from lynify.models.tokens import AccessToken
+from lynify.utils.utils import singleton
 
 
 @singleton

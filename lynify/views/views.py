@@ -1,34 +1,34 @@
-import os
 from datetime import datetime
 
-from bottle import request, route, run
+from django.http import HttpResponse
 
-from src.database.artists import Artist, ArtistTable
-from src.database.history import HistoryTable, PlayingHistoryEntry
-from src.database.tracks import TrackEntry, TrackTable
-from src.html import SpotifyLogin, display_currently_playing, header
+from lynify.models.artists import Artist, ArtistTable
+from lynify.models.history import HistoryTable, PlayingHistoryEntry
+from lynify.models.tracks import TrackEntry, TrackTable
+from lynify.views.html import SpotifyLogin, display_currently_playing, header
 
 
-@route("/")
-def index():
+def index(request):
     html = header()
-    token_success, token_result = SpotifyLogin(request.url)
+    token_success, token_result = SpotifyLogin(request.get_full_path())
     if not token_success:
-        return html + token_result
+        html += token_result
+        return HttpResponse(html)
 
-    return html + display_currently_playing()
+    html += display_currently_playing()
+    return HttpResponse(html)
 
 
-@route("/history")
-def history():
-    limit = request.query.limit or 25
-    offset = request.query.offset or 0
+def history(request):
+    limit = request.GET.get("limit", "25")
+    offset = request.GET.get("offset", "0")
     limit = int(limit)
     offset = int(offset)
     html = header()
-    token_success, token_result = SpotifyLogin(request.url)
+    token_success, token_result = SpotifyLogin(request.get_full_path())
     if not token_success:
-        return html + token_result
+        html += token_result
+        return HttpResponse(html)
     # left join to reduce sql calls
     result = HistoryTable().get_with_tracks(limit, offset)
     html += "<table>"
@@ -79,19 +79,19 @@ def history():
             + '" class="w3-bar-item w3-button">Next</a>'
         )
     html += "</div>"
-    return html
+    return HttpResponse(html)
 
 
-@route("/artists")
-def artists():
-    limit = request.query.limit or 25
-    offset = request.query.offset or 0
+def artists(request):
+    limit = request.GET.get("limit", "25")
+    offset = request.GET.get("offset", "0")
     limit = int(limit)
     offset = int(offset)
     html = header()
-    token_success, token_result = SpotifyLogin(request.url)
+    token_success, token_result = SpotifyLogin(request.get_full_path())
     if not token_success:
-        return html + token_result
+        html += token_result
+        return HttpResponse(html)
 
     artist_table = ArtistTable()
     result = artist_table.get_all_limit_offset(limit, offset)
@@ -127,16 +127,20 @@ def artists():
             + '" class="w3-bar-item w3-button">Next</a>'
         )
     html += "</div>"
-    return html
+    return HttpResponse(html)
 
 
-@route("/artists/<artist_id>")
-def artist(artist_id):
+def artist(request):
     html = header()
-    token_success, token_result = SpotifyLogin(request.url)
+    token_success, token_result = SpotifyLogin(request.get_full_path())
     if not token_success:
-        return html + token_result
+        html += token_result
+        return HttpResponse(html)
 
+    artist_id = request.GetParam("artist_id", "")
+    if artist_id == "":
+        html += "No artist ID provided"
+        return HttpResponse(html)
     artist = Artist.from_sql(artist_id)
     html += "<table>"
     html += "<tr><th>Artist</th><th>Genres</th><th>Popularity</th><th>Followers</th></tr>"
@@ -147,19 +151,19 @@ def artist(artist_id):
         html += "<td>" + col + "</td>"
     html += "</tr>"
     html += "</table>"
-    return html
+    return HttpResponse(html)
 
 
-@route("/tracks")
-def tracks():
-    limit = request.query.limit or 25
-    offset = request.query.offset or 0
+def tracks(request):
+    limit = request.GET.get("limit", "25")
+    offset = request.GET.get("offset", "0")
     limit = int(limit)
     offset = int(offset)
     html = header()
-    token_success, token_result = SpotifyLogin(request.url)
+    token_success, token_result = SpotifyLogin(request.get_full_path())
     if not token_success:
-        return html + token_result
+        html += token_result
+        return HttpResponse(html)
 
     track_table = TrackTable()
     result = track_table.get_all_limit_offset(limit, offset)
@@ -221,15 +225,20 @@ def tracks():
             + '" class="w3-bar-item w3-button">Next</a>'
         )
     html += "</div>"
-    return html
+    return HttpResponse(html)
 
 
-@route("/tracks/<track_id>")
-def track(track_id):
+def track(request):
+    track_id = request.GET.get("track_id", "")
+    if track_id == "":
+        html = header()
+        html += "No track ID provided"
+        return HttpResponse(html)
     html = header()
-    token_success, token_result = SpotifyLogin(request.url)
+    token_success, token_result = SpotifyLogin(request.get_full_path())
     if not token_success:
-        return html + token_result
+        html += token_result
+        return HttpResponse(html)
 
     track = TrackTable().get_track(track_id)
     html += "<table>"
@@ -268,13 +277,14 @@ def track(track_id):
         html += "<td>" + col + "</td>"
     html += "</tr>"
     html += "</table>"
-    return html
+    return HttpResponse(html)
 
 
-def run_app():
+""" def run_app():
     print("Starting server...\n")
     print("APP_LOCATION: " + os.environ.get("APP_LOCATION") + "\nPORT: " + os.environ.get("PORT"))
     if os.environ.get("APP_LOCATION") == "heroku":
         run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     else:
         run(host="localhost", port=8080, debug=True)
+ """

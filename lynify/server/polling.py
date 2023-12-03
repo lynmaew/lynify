@@ -1,8 +1,8 @@
 import time
 
-from src.database.history import HistoryTable
-from src.database.tokens import AccessToken
-from src.database.tracks import TrackTable
+from lynify.models.history import HistoryTable
+from lynify.models.tokens import AccessToken
+from lynify.models.tracks import TrackTable
 
 
 def poll_for_playing_history():

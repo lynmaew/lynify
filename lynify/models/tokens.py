@@ -5,9 +5,9 @@ import spotipy
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 
-from src.config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_USER_ID, SPOTIPY_REDIRECT_URI
-from src.database.database import Database
-from src.utils import singleton
+from lynify.config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_USER_ID, SPOTIPY_REDIRECT_URI
+from lynify.models.database import Database
+from lynify.utils.utils import singleton
 
 
 class TokenException(Exception):
@@ -47,6 +47,22 @@ class AccessToken:
         if user_id is None:
             user_id = SPOTIFY_USER_ID
         if not self.has_token(user_id):
+            # try to get a cached token
+            oauth = SpotifyOAuth(
+                client_id=SPOTIFY_CLIENT_ID,
+                client_secret=SPOTIFY_CLIENT_SECRET,
+                redirect_uri=SPOTIPY_REDIRECT_URI,
+                scope="user-read-currently-playing",
+            )
+            token = oauth.get_cached_token()
+            if token:
+                AccessToken().add_token(
+                    SPOTIFY_USER_ID,
+                    token["access_token"],
+                    token["refresh_token"],
+                    int(time.time() * 1000) + token["expires_in"] * 1000,
+                )
+                return token["access_token"]
             return None
         result = self.database.get_entry(self.table_name, ["user_id"], [user_id])
         # check if the token has expired

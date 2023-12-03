@@ -1,9 +1,9 @@
 import requests
 
-from src.config import SPOTIFY_API_URL
-from src.database.database import Database
-from src.database.tokens import AccessToken
-from src.utils import singleton
+from lynify.config import SPOTIFY_API_URL
+from lynify.models.database import Database
+from lynify.models.tokens import AccessToken
+from lynify.utils.utils import singleton
 
 
 @singleton

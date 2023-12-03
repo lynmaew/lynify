@@ -2,8 +2,10 @@ from typing import Optional
 
 import psycopg2
 
-from src.config import DATABASE_NAME, DATABASE_URL
-from src.utils import singleton
+from lynify.config import DATABASE_NAME, DATABASE_URL
+from lynify.utils.utils import singleton
+
+# from lynify.config import POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT
 
 
 @singleton
@@ -35,13 +37,13 @@ class Database:
         # conn.close()
 
     def connect(self):
-        # return psycopg2.connect(
-        #     database=self.database_name,
-        #     user=POSTGRES_USER,
-        #     password=POSTGRES_PASSWORD,
-        #     host=POSTGRES_HOST,
-        #     port=POSTGRES_PORT,
-        # )
+        """return psycopg2.connect(
+            database=self.database_name,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT,
+        )"""
         return psycopg2.connect(DATABASE_URL, sslmode="require")
 
     def table_exists(self, table_name: str):

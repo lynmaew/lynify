@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from src.database.database import Database
-from src.database.tracks import TrackTable
-from src.utils import singleton
+from lynify.models.database import Database
+from lynify.models.tracks import TrackTable
+from lynify.utils.utils import singleton
 
 
 @singleton

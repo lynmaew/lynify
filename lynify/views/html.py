@@ -4,8 +4,8 @@ from typing import Tuple
 
 from spotipy.oauth2 import SpotifyOAuth
 
-from src.config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_USER_ID, SPOTIPY_REDIRECT_URI
-from src.database.tokens import AccessToken
+from lynify.config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_USER_ID, SPOTIPY_REDIRECT_URI
+from lynify.models.tokens import AccessToken
 
 
 def nav_bar() -> str:
@@ -99,7 +99,9 @@ def SpotifyLogin(request_url) -> Tuple[bool, str]:
         )
         return True, token["access_token"]
     else:
+        print("parsing response code")
         code = oauth.parse_response_code(request_url)
+        print(code)
         if code != request_url:
             token = oauth.get_access_token(code)
             if token:
