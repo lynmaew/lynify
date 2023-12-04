@@ -19,14 +19,12 @@ def tracks(request):
     html += "<table>"
     col_names = [
         "Track",
-        "Artist",
+        "Artists",
         "Album",
         "Duration",
         "Popularity",
         "Release Date",
         "Explicit",
-        "Genres",
-        "Artist IDs",
     ]
     html += "<tr>"
     for col_name in col_names:
