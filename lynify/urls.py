@@ -17,14 +17,19 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-import lynify.views.views as views
+from lynify.views.artist import artist
+from lynify.views.artists import artists
+from lynify.views.history import history
+from lynify.views.index import index
+from lynify.views.track import track
+from lynify.views.tracks import tracks
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", views.index, name="index"),
-    path("history/", views.history, name="history"),
-    path("artists/", views.artists, name="artists"),
-    path("artist", views.artist, name="artist"),
-    path("tracks/", views.tracks, name="tracks"),
-    path("track/", views.track, name="track"),
+    path("", index, name="index"),
+    path("history/", history, name="history"),
+    path("artists/", artists, name="artists"),
+    path("artist", artist, name="artist"),
+    path("tracks/", tracks, name="tracks"),
+    path("track/", track, name="track"),
 ]

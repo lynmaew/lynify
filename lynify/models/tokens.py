@@ -2,12 +2,10 @@ import time
 from typing import Optional, Union
 
 import spotipy
-from spotipy import Spotify
+from django.db import models
 from spotipy.oauth2 import SpotifyOAuth
 
-from lynify.config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_USER_ID, SPOTIPY_REDIRECT_URI
-from lynify.models.database import Database
-from lynify.utils.utils import singleton
+from lynify.settings import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_USER_ID, SPOTIPY_REDIRECT_URI
 
 
 class TokenException(Exception):
@@ -16,37 +14,50 @@ class TokenException(Exception):
     pass
 
 
-@singleton
-class AccessToken:
-    """
-    A class to store and retrieve a Spotify access token in a sql table
-    """
+class AccessToken(models.Model):
+    user_id = models.TextField(primary_key=True)
+    access_token = models.TextField(blank=True, null=True)
+    refresh_token = models.TextField(blank=True, null=True)
+    expires_at = models.BigIntegerField(blank=True, null=True)
 
-    def __init__(self) -> None:
-        self.database = Database()
-        self.table_name = "access_token"
-        self.columns = ["user_id text", "access_token text", "refresh_token text", "expires_at bigint"]
-        if not self.table_exists():
-            self.create_table()
+    class Meta:
+        managed = True
+        db_table = "tokens"
 
-    def table_exists(self):
-        return self.database.table_exists(self.table_name)
+    def __str__(self):
+        return f"Token for {self.user_id} expires at {self.expires_at}"
 
-    def create_table(self):
-        self.database.create_table(self.table_name, self.columns)
+    def get_currently_playing(self) -> Union[dict, TokenException]:
+        try:
+            spotify = spotipy.Spotify(auth=self.access_token)
+            response = spotify.current_user_playing_track()
+        except spotipy.client.SpotifyException as e:
+            print("SpotifyException", e)
+            return e
+        return response
 
-    def has_token(self, user_id: Optional[str] = None):
+    @staticmethod
+    def from_spotify(user_id, access_token, refresh_token, expires_at) -> "AccessToken":
+        token = AccessToken()
+        token.user_id = user_id
+        token.access_token = access_token
+        token.refresh_token = refresh_token
+        token.expires_at = expires_at
+        token.save()
+        return token
+
+    @staticmethod
+    def get_token(user_id: Optional[str] = None) -> Union[str, None]:
+        """
+        Get the access token for a user.
+        If the token has expired, refresh it.
+        If the token has not been set, return None.
+        """
         if user_id is None:
             user_id = SPOTIFY_USER_ID
-        if not self.table_exists():
-            self.create_table()
-        result = self.database.get_entry(self.table_name, ["user_id"], [user_id])
-        return len(result) > 0
-
-    def get_token(self, user_id: Optional[str] = None) -> Optional[str]:
-        if user_id is None:
-            user_id = SPOTIFY_USER_ID
-        if not self.has_token(user_id):
+        try:
+            token = AccessToken.objects.get(user_id=user_id)
+        except AccessToken.DoesNotExist:
             # try to get a cached token
             oauth = SpotifyOAuth(
                 client_id=SPOTIFY_CLIENT_ID,
@@ -56,17 +67,16 @@ class AccessToken:
             )
             token = oauth.get_cached_token()
             if token:
-                AccessToken().add_token(
-                    SPOTIFY_USER_ID,
+                token = AccessToken.from_spotify(
+                    user_id,
                     token["access_token"],
                     token["refresh_token"],
                     int(time.time() * 1000) + token["expires_in"] * 1000,
                 )
-                return token["access_token"]
-            return None
-        result = self.database.get_entry(self.table_name, ["user_id"], [user_id])
-        # check if the token has expired
-        if len(result) > 0 and int(result[0][3]) < int(time.time() * 1000):
+            else:
+                return None
+
+        if token.expires_at < int(time.time() * 1000):
             # refresh the token
             oauth = SpotifyOAuth(
                 client_id=SPOTIFY_CLIENT_ID,
@@ -74,46 +84,17 @@ class AccessToken:
                 redirect_uri=SPOTIPY_REDIRECT_URI,
                 scope="user-read-currently-playing",
             )
-            token = oauth.refresh_access_token(result[0][2])
+            refreshed_token = oauth.refresh_access_token(token.refresh_token)
+            if refreshed_token is None:
+                return None
             # update the token
-            expires_at = int(time.time() * 1000) + token["expires_in"] * 1000
-            self.database.update_entry(
-                self.table_name,
-                ["access_token", "refresh_token", "expires_at"],
-                [token["access_token"], token["refresh_token"], expires_at],
-                ["user_id"],
-                [user_id],
+            expires_at = int(time.time() * 1000) + refreshed_token["expires_in"] * 1000
+            AccessToken.objects.update(
+                access_token=refreshed_token["access_token"],
+                refresh_token=refreshed_token["refresh_token"],
+                expires_at=expires_at,
             )
-            return token["access_token"]
-        if len(result) == 0:
-            return None
-        return result[0][1]
+            token = AccessToken.objects.get(user_id=user_id)
+            return token
 
-    def add_token(self, user_id, access_token, refresh_token, expires_at):
-        if not self.table_exists():
-            self.create_table()
-
-        if self.has_token(user_id):
-            # update the token
-            self.database.update_entry(
-                self.table_name,
-                ["access_token", "refresh_token", "expires_at"],
-                [access_token, refresh_token, expires_at],
-                ["user_id"],
-                [user_id],
-            )
-            return
-        values = [user_id, access_token, refresh_token, expires_at]
-        self.database.add_entry(self.table_name, self.columns, values)
-
-    def get_currently_playing(self, user_id: Optional[str] = None) -> Union[dict, Exception, None]:
-        if user_id is None:
-            user_id = SPOTIFY_USER_ID
-        access_token = self.get_token(user_id)
-        if access_token is None:
-            return TokenException("No access token")
-        try:
-            response = Spotify(access_token).current_user_playing_track()
-        except spotipy.client.SpotifyException as e:
-            return e
-        return response
+        return token
