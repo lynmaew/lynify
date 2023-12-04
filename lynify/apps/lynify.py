@@ -42,7 +42,7 @@ class LynifyApp(AppConfig):
             time.sleep(60)
 
     def ready(self):
-        if os.environ.get("RUN_MAIN") != "true":
+        if os.environ.get("RUN_MAIN"):
             return
 
         print("Starting polling thread")
