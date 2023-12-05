@@ -1,2 +1,2 @@
 release: python manage.py migrate
-web: gunicorn lynify.wsgi
+web: python lynify/apps/polling_standalone.py & gunicorn lynify.wsgi & wait -n

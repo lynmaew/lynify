@@ -10,7 +10,8 @@ class LynifyApp(AppConfig):
     name = "lynify"
     is_polling = False
 
-    def poll_for_playing_history(self):
+    @staticmethod
+    def poll_for_playing_history():
         print("Polling for playing history")
         from lynify.models.history import HistoryModel
         from lynify.models.tokens import AccessToken
@@ -32,21 +33,24 @@ class LynifyApp(AppConfig):
             HistoryModel.from_spotify(currently_playing)
         return True
 
-    def polling_loop(self):
+    @staticmethod
+    def polling_loop():
         while True:
             try:
-                if self.poll_for_playing_history():
+                if LynifyApp.poll_for_playing_history():
                     print("Polled for playing history")
             except Exception as e:
                 print(e)
             time.sleep(60)
 
     def ready(self):
-        if os.environ.get("RUN_MAIN"):
+        # avoid running multiple polling threads
+        # doesn't work when running with gunicorn
+        if not os.environ.get("RUN_MAIN"):
             return
 
         print("Starting polling thread")
         self.is_polling = True
-        thr = threading.Thread(target=self.polling_loop)
+        thr = threading.Thread(target=LynifyApp.polling_loop)
         thr.daemon = True
         thr.start()
